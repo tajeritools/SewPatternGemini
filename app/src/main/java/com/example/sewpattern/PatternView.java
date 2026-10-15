@@ -2,53 +2,166 @@ package com.example.sewpattern;
 
 import android.content.Context;
 import android.graphics.*;
+import android.graphics.pdf.PdfDocument;
 import android.view.View;
+import java.util.*;
+import java.io.*;
 
 public class PatternView extends View {
-    public float bust=92, waist=72, hip=98, length=100, allowance=1;
-    public String garment="Dress";
-    public PatternView(Context ctx) {super(ctx); setBackgroundColor(Color.WHITE);}
-    public void setParams(float b,float w,float h,float l,float a,String g) {bust=b;waist=w;hip=h;length=l;allowance=a;garment=g;invalidate();}
-    @Override protected void onDraw(Canvas c){super.onDraw(c); drawSheet(c,getWidth(),getHeight());}
-    public void drawSheet(Canvas c, float w, float h) {
-        c.save(); c.drawColor(Color.WHITE);
-        float scale=Math.min(w/760f,h/1050f); c.scale(scale,scale);
-        Paint ink=new Paint(3); ink.setColor(Color.BLACK); ink.setTextSize(17); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
-        c.drawText("SEW PATTERN - "+garment.toUpperCase(),30,32,ink);
-        ink.setTextSize(12); ink.setTypeface(Typeface.DEFAULT);
-        c.drawText("B "+bust+" / W "+waist+" / H "+hip+" / L "+length+" cm | SA "+allowance+" cm",30,54,ink);
-        c.drawText("SCHEMATIC ONLY - NOT TO SCALE - VERIFY FIT BEFORE CUTTING",30,73,ink);
-        if(!garment.equals("Skirt")) {
-            piece(c,32,108,305,350,"FRONT BODICE", "CUT 1 ON FOLD",true,0);
-            piece(c,415,108,690,350,"BACK BODICE","CUT 2",false,0);
-        }
-        if(!garment.equals("Top")) {
-            piece(c,32,garment.equals("Skirt")?125:445,310,garment.equals("Skirt")?865:980,"FRONT SKIRT","CUT 1 ON FOLD",true,1);
-            piece(c,405,garment.equals("Skirt")?125:445,695,garment.equals("Skirt")?865:980,"BACK SKIRT","CUT 2",false,1);
-        }
-        if(garment.equals("Top")) {
-            piece(c,32,420,305,720,"FRONT LOWER","CUT 1 ON FOLD",true,0);
-            piece(c,415,420,690,720,"BACK LOWER","CUT 2",false,0);
-        }
-        c.restore();
+  public float bust=92,waist=72,hip=98,length=100,allowance=1;
+  public String garment="Dress";
+  static final float PT_PER_MM=72f/25.4f;
+  static final float PAGE_W=210, PAGE_H=297, MARGIN=10;
+  static final float TILE_W=190,TILE_H=277;
+  static final float GRID=5;
+  static class Piece {
+    String name,cut; float[] xy; boolean fold; float grainX, grainY1,grainY2;
+    Piece(String n,String cut,boolean fold,float... coords){this.name=n;this.cut=cut;this.fold=fold;this.xy=coords;}
+  }
+  public PatternView(Context c){super(c);setBackgroundColor(Color.WHITE);}
+  public void setParams(float b,float w,float h,float l,float a,String g){
+    bust=b;waist=w;hip=h;length=l;allowance=a;garment=g;invalidate();
+  }
+  // Coordinates are millimetres. Drafts are symmetrical half-body blocks.
+  // Front and back waist add 2cm total wearing ease; bust +6cm; hips +4cm.
+  // Basic bodice block uses a fixed 40cm shoulder-to-waist depth: requires fitting.
+  ArrayList<Piece> draft(){
+    if(bust<60||bust>180||waist<45||waist>160||hip<60||hip>190||
+       length<45||length>220||allowance<0||allowance>3)
+       throw new IllegalArgumentException("Check dimensions: bust 60-180, waist 45-160, hip 60-190, length 45-220, seam 0-3 cm");
+    ArrayList<Piece> out=new ArrayList<>();
+    float bw=(bust+6)*2.5f;  // quarter-bust in mm
+    float ww=(waist+2)*2.5f; // quarter-waist
+    float hw=(hip+4)*2.5f;
+    float bodiceH=400; // shoulder to waist nominal block
+    float skirtH=Math.max(100,length*10-bodiceH);
+    float shoulder=Math.min(bw-30,175);
+    float armY=190;
+    if(!garment.equals("Skirt")){
+      // Coordinates outer contour WITHOUT seam allowance; dart intake represented by waist-shaping seam.
+      Piece f=new Piece("FRONT BODICE","CUT 1 ON FOLD",true,
+        0,0, 73,0, 73,75, shoulder,42, bw-10,armY, ww, bodiceH, 0,bodiceH);
+      Piece b=new Piece("BACK BODICE","CUT 2 MIRRORED",false,
+        0,0, 72,0,72,25,shoulder,38,bw-13,armY,ww,bodiceH,0,bodiceH);
+      out.add(f);out.add(b);
     }
-    private void piece(Canvas c,float x1,float y1,float x2,float y2,String name,String cut,boolean fold,int kind){
-        Paint p=new Paint(3); p.setStrokeWidth(2);p.setColor(Color.BLACK);
-        Path path=new Path();float ww=x2-x1, hh=y2-y1;
-        if(kind==1){path.moveTo(x1+ww*.22f,y1);path.lineTo(x2-ww*.22f,y1);path.lineTo(x2,y2);path.quadTo(x1+ww*.5f,y2+16,x1,y2);path.close();}
-        else {path.moveTo(x1+ww*.2f,y1);path.quadTo(x1+ww*.5f,y1+32,x2-ww*.2f,y1);path.lineTo(x2,y1+hh*.22f);path.lineTo(x2-ww*.07f,y2);path.lineTo(x1+ww*.07f,y2);path.lineTo(x1,y1+hh*.22f);path.close();}
-        p.setStyle(Paint.Style.FILL);p.setColor(Color.rgb(208,235,250));c.drawPath(path,p);
-        p.setStyle(Paint.Style.STROKE);p.setColor(Color.BLACK);c.drawPath(path,p);
-        p.setPathEffect(new DashPathEffect(new float[]{8,5},0));p.setStrokeWidth(1);
-        c.save(); c.clipPath(path);c.drawRect(x1+8,y1+8,x2-8,y2-8,p);c.restore();p.setPathEffect(null);
-        p.setStyle(Paint.Style.FILL);p.setTextSize(15);p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
-        float mid=(x1+x2)/2; p.setTextAlign(Paint.Align.CENTER);c.drawText(name,mid,y1+hh*.5f,p);
-        p.setTypeface(Typeface.DEFAULT);c.drawText(cut,mid,y1+hh*.5f+22,p);
-        p.setStrokeWidth(2);p.setStyle(Paint.Style.STROKE);
-        c.drawLine(mid,y1+hh*.22f,mid,y1+hh*.38f,p);
-        c.drawLine(mid,y1+hh*.22f,mid-6,y1+hh*.25f,p);c.drawLine(mid,y1+hh*.22f,mid+6,y1+hh*.25f,p);
-        c.drawLine(mid,y1+hh*.38f,mid-6,y1+hh*.35f,p);c.drawLine(mid,y1+hh*.38f,mid+6,y1+hh*.35f,p);
-        c.drawLine(x1+10,y1+hh*.5f,x1-2,y1+hh*.5f,p);c.drawLine(x2-10,y1+hh*.5f,x2+2,y1+hh*.5f,p);
-        if(fold){p.setStyle(Paint.Style.FILL);p.setTextSize(11);c.drawText("FOLD (schematic)",mid,y2-17,p);}
+    if(!garment.equals("Top")){
+      // A-line front/back skirt with fit-dependent width, moderate hem sweep
+      float hem=Math.max(hw+75,ww+120);
+      Piece f=new Piece("FRONT SKIRT","CUT 1 ON FOLD",true,
+        0,0,ww,0,hw,200,hem,skirtH,0,skirtH);
+      Piece b=new Piece("BACK SKIRT","CUT 2 MIRRORED",false,
+        0,0,ww,0,hw,200,hem,skirtH,0,skirtH);
+      out.add(f);out.add(b);
     }
+    return out;
+  }
+  static Paint pen(int color,float size){Paint p=new Paint(3);p.setColor(color);p.setStrokeWidth(size);return p;}
+  static Path path(float[] xy){
+    Path p=new Path();p.moveTo(xy[0],xy[1]);for(int i=2;i<xy.length;i+=2)p.lineTo(xy[i],xy[i+1]);p.close();return p;
+  }
+  // Polygon offset via adjacent edge intersections. Uses winding to choose outward normal.
+  static float[] offset(float[] xy,float margin){
+    int n=xy.length/2;float area=0;for(int i=0;i<n;i++){int j=(i+1)%n;area+=xy[2*i]*xy[2*j+1]-xy[2*j]*xy[2*i+1];}
+    float sign=area>=0?1:-1;float[] out=new float[xy.length];
+    for(int i=0;i<n;i++){
+      int prev=(i+n-1)%n,next=(i+1)%n;
+      float ax=xy[2*i]-xy[2*prev],ay=xy[2*i+1]-xy[2*prev+1];
+      float bx=xy[2*next]-xy[2*i],by=xy[2*next+1]-xy[2*i+1];
+      float al=(float)Math.hypot(ax,ay),bl=(float)Math.hypot(bx,by);
+      ax/=al;ay/=al;bx/=bl;by/=bl;
+      float n1x=sign*ay,n1y=-sign*ax,n2x=sign*by,n2y=-sign*bx;
+      float denom=ax*by-ay*bx;
+      float px=xy[2*i]+n1x*margin,py=xy[2*i+1]+n1y*margin;
+      if(Math.abs(denom)<.0001){out[2*i]=px;out[2*i+1]=py;continue;}
+      float qx=xy[2*i]+n2x*margin,qy=xy[2*i+1]+n2y*margin;
+      float t=((qx-px)*by-(qy-py)*bx)/denom;
+      float mx=px+t*ax,my=py+t*ay;
+      if(Math.hypot(mx-xy[2*i],my-xy[2*i+1])>margin*6){
+        mx=xy[2*i]+(n1x+n2x)*margin/2;my=xy[2*i+1]+(n1y+n2y)*margin/2;
+      }
+      out[2*i]=mx;out[2*i+1]=my;
+    }
+    return out;
+  }
+  static float[] bounds(float[] a){
+    float minX=Float.MAX_VALUE,minY=Float.MAX_VALUE,maxX=-1e6f,maxY=-1e6f;
+    for(int i=0;i<a.length;i+=2){minX=Math.min(minX,a[i]);maxX=Math.max(maxX,a[i]);minY=Math.min(minY,a[i+1]);maxY=Math.max(maxY,a[i+1]);}
+    return new float[]{minX,minY,maxX,maxY};
+  }
+  void drawPiece(Canvas c,Piece piece,float sa){
+    float[] inner=piece.xy,outer=offset(inner,sa);
+    Paint fill=pen(0xffd3eafa,0); fill.setStyle(Paint.Style.FILL);c.drawPath(path(outer),fill);
+    Paint outline=pen(Color.BLACK,.55f);outline.setStyle(Paint.Style.STROKE);c.drawPath(path(outer),outline);
+    Paint stitch=pen(0xff444444,.35f);stitch.setStyle(Paint.Style.STROKE);
+    stitch.setPathEffect(new DashPathEffect(new float[]{3,2},0));c.drawPath(path(inner),stitch);
+    float[] bb=bounds(inner);
+    float mid=(bb[0]+bb[2])/2;
+    Paint ink=pen(Color.BLACK,.4f);ink.setTextSize(6);ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
+    float lineY=bb[1]+Math.min(95,(bb[3]-bb[1])*.48f);
+    c.drawText(piece.name,bb[0]+10,lineY,ink);
+    ink.setTypeface(Typeface.DEFAULT);ink.setTextSize(5);
+    c.drawText(piece.cut,bb[0]+10,lineY+9,ink);
+    c.drawText("SA "+(sa/10)+" cm",bb[0]+10,lineY+18,ink);
+    float gx=bb[0]+Math.max(24,(bb[2]-bb[0])*.53f);
+    float gy1=bb[1]+Math.min(50,(bb[3]-bb[1])*.18f),gy2=gy1+Math.min(65,(bb[3]-bb[1])*.22f);
+    c.drawLine(gx,gy1,gx,gy2,outline);
+    c.drawLine(gx,gy1,gx-4,gy1+7,outline);c.drawLine(gx,gy1,gx+4,gy1+7,outline);
+    c.drawLine(gx,gy2,gx-4,gy2-7,outline);c.drawLine(gx,gy2,gx+4,gy2-7,outline);
+    // Mid-side match notches are short crossing lines; not for automatic notcher tooling.
+    for(int i=0;i<inner.length;i+=2){
+      int j=(i+2)%inner.length;
+      float x=(inner[i]+inner[j])/2,y=(inner[i+1]+inner[j+1])/2;
+      if(i==0 || i==inner.length-2)continue;
+      c.drawLine(x-3,y-3,x+3,y+3,outline);
+    }
+    if(piece.fold){
+      Paint blue=pen(0xff185c88,.5f);blue.setStyle(Paint.Style.STROKE);
+      c.drawLine(0,0,0,bb[3],blue);
+      ink.setTextSize(5);c.drawText("PLACE STRAIGHT EDGE ON FOLD",5,bb[3]-10,ink);
+    }
+  }
+  // One separate multi-page A4 print sheet per pattern piece. Page coordinates remain true mm.
+  public PdfDocument makeTiledPdf(){
+    ArrayList<Piece> pieces=draft();PdfDocument doc=new PdfDocument();
+    int page=0;float sa=allowance*10;
+    for(Piece piece:pieces){
+      float[] b=bounds(offset(piece.xy,sa));
+      float minX=Math.min(0,b[0])-12,minY=b[1]-12;
+      float width=b[2]-minX+12,height=b[3]-minY+12;
+      int cols=Math.max(1,(int)Math.ceil(width/TILE_W));
+      int rows=Math.max(1,(int)Math.ceil(height/TILE_H));
+      for(int row=0;row<rows;row++)for(int col=0;col<cols;col++){
+        PdfDocument.Page pg=doc.startPage(new PdfDocument.PageInfo.Builder(
+          Math.round(PAGE_W*PT_PER_MM),Math.round(PAGE_H*PT_PER_MM),++page).create());
+        Canvas canvas=pg.getCanvas();canvas.save();canvas.scale(PT_PER_MM,PT_PER_MM);
+        Paint black=pen(Color.BLACK,.3f);black.setStyle(Paint.Style.STROKE);
+        canvas.drawRect(MARGIN,MARGIN,PAGE_W-MARGIN,PAGE_H-MARGIN,black);
+        Paint txt=pen(Color.BLACK,0);txt.setTextSize(4.5f);
+        canvas.drawText(piece.name+" | TILE "+(col+1)+"/"+cols+" x "+(row+1)+"/"+rows,12,6,txt);
+        canvas.drawText("PRINT 100% / ACTUAL SIZE - NO FIT TO PAGE",12,294,txt);
+        // 50mm scale verification line.
+        if(row==0&&col==0){canvas.drawLine(115,6,165,6,black);canvas.drawText("50 mm",170,7,txt);}
+        canvas.clipRect(MARGIN,MARGIN,PAGE_W-MARGIN,PAGE_H-MARGIN);
+        canvas.translate(MARGIN-col*TILE_W-minX,MARGIN-row*TILE_H-minY);
+        drawPiece(canvas,piece,sa);
+        canvas.restore();doc.finishPage(pg);
+      }
+    }
+    return doc;
+  }
+  @Override protected void onDraw(Canvas c){super.onDraw(c);
+    c.drawColor(Color.WHITE);
+    ArrayList<Piece> p;
+    try{p=draft();}catch(Exception e){c.drawText(e.getMessage(),15,40,pen(Color.RED,1));return;}
+    float x=15,y=20;
+    Paint label=pen(Color.BLACK,1);label.setTextSize(13);
+    c.drawText("Measured draft preview (PDF is true 1:1)",x,y,label);
+    for(Piece piece:p){
+      float[] b=bounds(offset(piece.xy,allowance*10));
+      float scale=Math.min((getWidth()-35)/(b[2]-b[0]),170/(b[3]-b[1]));
+      c.save();c.translate(15,y+18);c.scale(scale,scale);c.translate(-b[0],-b[1]);
+      drawPiece(c,piece,allowance*10);c.restore();y+=195;
+    }
+  }
 }
