@@ -19,7 +19,7 @@ public class MainActivity extends Activity {
     EditText keyField, bust, waist, hip, length, seam;
     Spinner garment;
     Uri imageUri;
-    String pdfName="SewPatternGemini-v0.2.0-Metric.pdf";
+    String pdfName="SewPatternGemini-v0.3.0-Metric.pdf";
     Spinner method; TextView methodInfo;
     final int PICK_IMAGE=10, CREATE_PDF=11, CREATE_ZIP=12;
     int bg=0xfff3f7fb;
@@ -32,34 +32,34 @@ public class MainActivity extends Activity {
     void buildUI(){
         ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);setContentView(scroll);
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(20,18,20,30);root.setBackgroundColor(bg);scroll.addView(root);
-        TextView header=new TextView(this);header.setText("SewPatternGemini v0.2.0 | Eveningwear");header.setTextSize(24);header.setTextColor(0xff18364f);root.addView(header);
-        status=new TextView(this);status.setText("Gemini: not checked | Offline: ready");status.setPadding(0,10,0,10);root.addView(status);
-        button(root,"Choose garment photo (optional)",this::pickPhoto);
-        photoLabel=new TextView(this);photoLabel.setText("No image selected");root.addView(photoLabel);
-        keyField=new EditText(this);keyField.setHint("Gemini API key (optional)");keyField.setSingleLine(true);keyField.setInputType(129);
+        TextView header=new TextView(this);header.setText("SewPatternGemini  نسخه ۰.۳.۰ | لباس مجلسی");header.setTextSize(24);header.setTextColor(0xff18364f);root.addView(header);
+        status=new TextView(this);status.setText("جمنای: بررسی نشده | حالت آفلاین: آماده");status.setPadding(0,10,0,10);root.addView(status);
+        button(root,"انتخاب عکس لباس مجلسی",this::pickPhoto);
+        photoLabel=new TextView(this);photoLabel.setText("هنوز عکسی انتخاب نشده");root.addView(photoLabel);
+        keyField=new EditText(this);keyField.setHint("کلید API جمنای (اختیاری)");keyField.setSingleLine(true);keyField.setInputType(129);
         keyField.setText(getPreferences(0).getString("gemini_key",""));root.addView(keyField);
-        button(root,"Check Gemini connection",()->geminiRequest(false));
-        button(root,"Analyze garment photo with Gemini",()->geminiRequest(true));
-        suggestion=new TextView(this);suggestion.setText("Photo analysis requires a Gemini key and internet. Offline pattern drafting does not.");suggestion.setTextIsSelectable(true);root.addView(suggestion);
-        TextView offline=new TextView(this);offline.setText("OFFLINE PARAMETRIC DRAFTING (cm)");offline.setTextSize(19);offline.setPadding(0,18,0,6);root.addView(offline);
-        garment=new Spinner(this);String[] options={"Evening dress - fitted A-line","Evening dress - flared skirt","Evening dress - straight skirt"};garment.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,options));root.addView(garment);
-        method=new Spinner(this);String[] methods={"Metric block | balanced ease","Close-fit block | reduced ease","Relaxed block | extra ease","Aldrich / Muller | reference only"};method.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,methods));root.addView(method);
+        button(root,"بررسی اتصال جمنای",()->geminiRequest(false));
+        button(root,"تحلیل عکس لباس با جمنای",()->geminiRequest(true));
+        suggestion=new TextView(this);suggestion.setText("تحلیل عکس به اینترنت و کلید جمنای نیاز دارد؛ رسم الگوی پایه آفلاین است.");suggestion.setTextIsSelectable(true);root.addView(suggestion);
+        TextView offline=new TextView(this);offline.setText("الگوسازی آفلاین لباس مجلسی (سانتی‌متر)");offline.setTextSize(19);offline.setPadding(0,18,0,6);root.addView(offline);
+        garment=new Spinner(this);String[] options={"مجلسی جذب با دامن فون","مجلسی با دامن گشاد","مجلسی با دامن راسته"};garment.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,options));root.addView(garment);
+        method=new Spinner(this);String[] methods={"الگوی متریک سفارشی | آزادی معمول","الگوی جذب | آزادی کمتر","الگوی آزاد | آزادی بیشتر","آلدریچ / مولر | فقط مرجع، اجرا نشده"};method.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,methods));root.addView(method);
         methodInfo=new TextView(this);root.addView(methodInfo);method.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){public void onNothingSelected(android.widget.AdapterView<?> parent){} public void onItemSelected(android.widget.AdapterView<?> parent,View v,int position,long id){updatePattern();}});
-        button(root,"Compare drafting methods",()->new AlertDialog.Builder(this).setTitle("Drafting methods / status").setMessage("METRIC: custom proportional block (bust +6, waist +2, hips +4 cm ease).\\nCLOSE FIT: reduced ease; test toile required.\\nRELAXED: more wearing ease.\\nALDRICH / MULLER: references only, NOT authentic implementations; choosing this shows the metric baseline.\\nNone are certified industrial methods. These are geometry variants, not guaranteed sewing-ready eveningwear patterns.").setPositiveButton("OK",null).show());
-        bust=number(root,"Bust circumference (cm)","92");waist=number(root,"Waist circumference (cm)","72");hip=number(root,"Hip circumference (cm)","98");length=number(root,"Garment length (cm)","100");seam=number(root,"Seam allowance (cm)","1");
-        button(root,"Generate measured block preview",this::updatePattern);
+        button(root,"مقایسه روش‌های الگو",()->new AlertDialog.Builder(this).setTitle("توضیح روش‌های محاسباتی").setMessage("متریک: بلوک سفارشی با آزادی سینه ۶، کمر ۲ و باسن ۴ سانتی‌متر.\\nجذب: آزادی کمتر؛ پرو الزامی است.\\nآزاد: آزادی بیشتر.\\nآلدریچ و مولر صرفاً مرجع هستند و فرمول اصلی آن‌ها اجرا نشده است. هیچ‌یک هنوز الگوی تضمین‌شده آماده دوخت نیست.").setPositiveButton("تأیید",null).show());
+        bust=number(root,"دور سینه (سانتی‌متر)","92");waist=number(root,"دور کمر (سانتی‌متر)","72");hip=number(root,"دور باسن (سانتی‌متر)","98");length=number(root,"قد لباس (سانتی‌متر)","100");seam=number(root,"زاپاس دوخت (سانتی‌متر)","1");
+        button(root,"نمایش الگوی اندازه‌گذاری‌شده",this::updatePattern);
         pattern=new PatternView(this);root.addView(pattern,new LinearLayout.LayoutParams(-1,1150));
-        button(root,"Export ALL 3 methods as ZIP (A4 PDFs)",()->{updatePattern(); Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/zip");i.putExtra(Intent.EXTRA_TITLE,"SewPatternGemini-v0.2.0-patterns.zip");startActivityForResult(i,CREATE_ZIP);});
-        button(root,"Export tiled A4 pattern PDF (1:1)",()->{updatePattern(); Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/pdf");i.putExtra(Intent.EXTRA_TITLE,pdfName);startActivityForResult(i,CREATE_PDF);});
-        TextView note=new TextView(this);note.setText("IMPORTANT: A4 PDF is drafted in true millimetres with size-based basic blocks and seam allowances. These are NOT validated custom-fitted patterns. Bodice depth, armholes, waist darts, fastenings and complex sleeves still require fitting/engineering. Print at 100%, check 50 mm line, assemble tiles and sew a test garment first. Gemini suggestions are not measurements.");root.addView(note);
+        button(root,"خروجی هر سه روش در ZIP (PDF A4)",()->{updatePattern(); Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/zip");i.putExtra(Intent.EXTRA_TITLE,"SewPatternGemini-v0.3.0-patterns.zip");startActivityForResult(i,CREATE_ZIP);});
+        button(root,"خروجی PDF الگو در مقیاس ۱:۱",()->{updatePattern(); Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/pdf");i.putExtra(Intent.EXTRA_TITLE,pdfName);startActivityForResult(i,CREATE_PDF);});
+        TextView note=new TextView(this);note.setText("توجه: این نسخه هنوز الگوی آماده برش لباس مجلسی عکس نیست. الگوهای پایه با اندازه‌های ورودی ترسیم می‌شوند، ولی طراحی دقیق کاپ، ساسون، آستین افتاده، سجاف، آستر و کنترل تن‌خور کامل نیست. روی پارچه اصلی برش نزنید؛ ابتدا الگوی چاپی و نمونه پرو را بررسی کنید.");root.addView(note);
     }
     float parse(EditText e,float fallback){try{return Float.parseFloat(e.getText().toString());}catch(Exception x){return fallback;}}
-    void updatePattern(){if(pattern==null||method==null||method.getSelectedItem()==null)return;pattern.setParams(parse(bust,92),parse(waist,72),parse(hip,98),parse(length,100),parse(seam,1),garment.getSelectedItem().toString());pattern.method=method.getSelectedItemPosition();methodInfo.setText(method.getSelectedItem().toString()+" — "+(pattern.method==3?"REFERENCE ONLY; metric baseline":"parametric block; test fitting required"));pdfName="SewPatternGemini-v0.2.0-"+(pattern.method==0?"Metric":pattern.method==1?"CloseFit":pattern.method==2?"Relaxed":"Reference")+".pdf";pattern.invalidate();}
+    void updatePattern(){if(pattern==null||method==null||method.getSelectedItem()==null)return;pattern.setParams(parse(bust,92),parse(waist,72),parse(hip,98),parse(length,100),parse(seam,1),(garment.getSelectedItemPosition()==1?"Evening dress - flared skirt":garment.getSelectedItemPosition()==2?"Evening dress - straight skirt":"Evening dress - fitted A-line"));pattern.method=method.getSelectedItemPosition();methodInfo.setText(method.getSelectedItem().toString()+" — "+(pattern.method==3?"فقط مرجع؛ خروجی همان الگوی متریک است":"بلوک محاسباتی؛ پرو ضروری است"));pdfName="SewPatternGemini-v0.3.0-"+(pattern.method==0?"Metric":pattern.method==1?"CloseFit":pattern.method==2?"Relaxed":"Reference")+".pdf";pattern.invalidate();}
     void pickPhoto(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("image/*");startActivityForResult(i,PICK_IMAGE);}
     @Override protected void onActivityResult(int req,int result,Intent data){super.onActivityResult(req,result,data);if(result!=RESULT_OK||data==null)return;
-        if(req==PICK_IMAGE){imageUri=data.getData();photoLabel.setText("Photo selected: "+imageUri);try{getContentResolver().takePersistableUriPermission(imageUri,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}}
-        if(req==CREATE_ZIP){try{updatePattern();int original=pattern.method;String[] names={"Metric","CloseFit","Relaxed"};try(java.util.zip.ZipOutputStream zip=new java.util.zip.ZipOutputStream(getContentResolver().openOutputStream(data.getData()))){for(int k=0;k<3;k++){pattern.method=k;PdfDocument doc=pattern.makeTiledPdf();ByteArrayOutputStream output=new ByteArrayOutputStream();doc.writeTo(output);doc.close();zip.putNextEntry(new java.util.zip.ZipEntry("SewPatternGemini-v0.2.0-"+names[k]+".pdf"));zip.write(output.toByteArray());zip.closeEntry();}String instructions="Pattern methods are custom METRIC / CLOSE FIT / RELAXED blocks, not authentic Aldrich or Muller. Print 100%, measure 50 mm line, verify measurements, check fit using toile BEFORE cutting fashion fabric. Off-shoulder sleeves, facings, linings, zippers and detailed model lines are NOT drafted in this release.\\n";zip.putNextEntry(new java.util.zip.ZipEntry("READ_BEFORE_SEWING.txt"));zip.write(instructions.getBytes(java.nio.charset.StandardCharsets.UTF_8));zip.closeEntry();}pattern.method=original;pattern.invalidate();toast("3 PDFs saved as ZIP; toile fitting required.");}catch(Exception ex){toast("ZIP export failed: "+ex.getMessage());}}
-        if(req==CREATE_PDF){try{updatePattern();PdfDocument doc=pattern.makeTiledPdf();try(OutputStream out=getContentResolver().openOutputStream(data.getData())){doc.writeTo(out);}doc.close();toast("True-size tiled A4 PDF saved; print 100% and measure 50 mm reference.");}catch(Exception ex){toast("Export failed: "+ex.getMessage());}}
+        if(req==PICK_IMAGE){imageUri=data.getData();photoLabel.setText("عکس انتخاب‌شده: "+imageUri);try{getContentResolver().takePersistableUriPermission(imageUri,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}}
+        if(req==CREATE_ZIP){try{updatePattern();int original=pattern.method;String[] names={"Metric","CloseFit","Relaxed"};try(java.util.zip.ZipOutputStream zip=new java.util.zip.ZipOutputStream(getContentResolver().openOutputStream(data.getData()))){for(int k=0;k<3;k++){pattern.method=k;PdfDocument doc=pattern.makeTiledPdf();ByteArrayOutputStream output=new ByteArrayOutputStream();doc.writeTo(output);doc.close();zip.putNextEntry(new java.util.zip.ZipEntry("SewPatternGemini-v0.3.0-"+names[k]+".pdf"));zip.write(output.toByteArray());zip.closeEntry();}String instructions="سه روش بلوک محاسباتی سفارشی هستند و نسخه رسمی آلدریچ یا مولر نیستند. در مقیاس ۱۰۰٪ چاپ کنید، خط کنترل ۵۰ میلی‌متری را اندازه بگیرید و قبل از برش پارچه اصلی نمونه پرو بدوزید. آستین افتاده، آستر، سجاف و زیپ هنوز مدل‌سازی نشده‌اند.\\n";zip.putNextEntry(new java.util.zip.ZipEntry("READ_BEFORE_SEWING.txt"));zip.write(instructions.getBytes(java.nio.charset.StandardCharsets.UTF_8));zip.closeEntry();}pattern.method=original;pattern.invalidate();toast("سه فایل PDF ذخیره شدند؛ پیش از برش پارچه اصلی، نمونه پرو بدوزید.");}catch(Exception ex){toast("خطای ZIP: "+ex.getMessage());}}
+        if(req==CREATE_PDF){try{updatePattern();PdfDocument doc=pattern.makeTiledPdf();try(OutputStream out=getContentResolver().openOutputStream(data.getData())){doc.writeTo(out);}doc.close();toast("PDF ذخیره شد؛ در اندازه واقعی چاپ کنید و خط ۵۰ میلی‌متری را اندازه بگیرید.");}catch(Exception ex){toast("خطای خروجی: "+ex.getMessage());}}
     }
     void toast(String t){runOnUiThread(()->Toast.makeText(this,t,Toast.LENGTH_LONG).show());}
     byte[] imageBytes() throws Exception{
@@ -70,8 +70,8 @@ public class MainActivity extends Activity {
         Bitmap bitmap;try(InputStream in=getContentResolver().openInputStream(imageUri)){bitmap=BitmapFactory.decodeStream(in,null,o);}
         if(bitmap==null)throw new IOException("Could not read image");ByteArrayOutputStream bytes=new ByteArrayOutputStream();bitmap.compress(Bitmap.CompressFormat.JPEG,75,bytes);bitmap.recycle();return bytes.toByteArray();
     }
-    void geminiRequest(boolean analyze){String key=keyField.getText().toString().trim();if(key.length()<10){status.setText("Gemini: API key missing | Offline: ready");return;}
-        getPreferences(0).edit().putString("gemini_key",key).apply();status.setText("Gemini: checking... | Offline: ready");
+    void geminiRequest(boolean analyze){String key=keyField.getText().toString().trim();if(key.length()<10){status.setText("جمنای: کلید وارد نشده | آفلاین: آماده");return;}
+        getPreferences(0).edit().putString("gemini_key",key).apply();status.setText("جمنای: در حال بررسی | آفلاین: آماده");
         new Thread(()->{try{
             String endpoint="https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
             HttpURLConnection conn=(HttpURLConnection)new URL(endpoint).openConnection();conn.setRequestMethod("POST");conn.setConnectTimeout(12000);conn.setReadTimeout(45000);conn.setRequestProperty("Content-Type","application/json");conn.setRequestProperty("x-goog-api-key",key);conn.setDoOutput(true);
@@ -82,8 +82,8 @@ public class MainActivity extends Activity {
             int code=conn.getResponseCode();InputStream in=code>=200&&code<300?conn.getInputStream():conn.getErrorStream();String response=readAll(in);conn.disconnect();
             if(code<200||code>=300)throw new IOException("HTTP "+code+": "+response.substring(0,Math.min(220,response.length())));
             JSONObject obj=new JSONObject(response);String answer=obj.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
-            runOnUiThread(()->{status.setText("Gemini: CONNECTED | Offline: ready");suggestion.setText(analyze?answer:"Gemini connection verified. Offline mode works independently.");});
-        }catch(Exception e){runOnUiThread(()->{status.setText("Gemini: DISCONNECTED / ERROR | Offline: ready");suggestion.setText(e.getMessage());});}}).start();
+            runOnUiThread(()->{status.setText("جمنای: متصل | آفلاین: آماده");suggestion.setText(analyze?answer:"اتصال جمنای تأیید شد. حالت آفلاین مستقل است.");});
+        }catch(Exception e){runOnUiThread(()->{status.setText("جمنای: قطع یا خطا | آفلاین: آماده");suggestion.setText(e.getMessage());});}}).start();
     }
     String readAll(InputStream in)throws IOException{if(in==null)return "No response";try(InputStream source=in;ByteArrayOutputStream out=new ByteArrayOutputStream()){byte[] buf=new byte[8192];int n;while((n=source.read(buf))!=-1)out.write(buf,0,n);return out.toString("UTF-8");}}
 }
