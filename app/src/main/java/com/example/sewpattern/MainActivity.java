@@ -19,7 +19,8 @@ public class MainActivity extends Activity {
     EditText keyField, bust, waist, hip, length, seam;
     Spinner garment;
     Uri imageUri;
-    String pdfName="SewPattern.pdf";
+    String pdfName="SewPatternGemini-v0.2.0-Metric.pdf";
+    Spinner method; TextView methodInfo;
     final int PICK_IMAGE=10, CREATE_PDF=11;
     int bg=0xfff3f7fb;
     @Override public void onCreate(Bundle b){super.onCreate(b);buildUI();}
@@ -31,7 +32,7 @@ public class MainActivity extends Activity {
     void buildUI(){
         ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);setContentView(scroll);
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(20,18,20,30);root.setBackgroundColor(bg);scroll.addView(root);
-        TextView header=new TextView(this);header.setText("Sew Pattern Studio | Android");header.setTextSize(24);header.setTextColor(0xff18364f);root.addView(header);
+        TextView header=new TextView(this);header.setText("SewPatternGemini v0.2.0 | Eveningwear");header.setTextSize(24);header.setTextColor(0xff18364f);root.addView(header);
         status=new TextView(this);status.setText("Gemini: not checked | Offline: ready");status.setPadding(0,10,0,10);root.addView(status);
         button(root,"Choose garment photo (optional)",this::pickPhoto);
         photoLabel=new TextView(this);photoLabel.setText("No image selected");root.addView(photoLabel);
@@ -41,7 +42,10 @@ public class MainActivity extends Activity {
         button(root,"Analyze garment photo with Gemini",()->geminiRequest(true));
         suggestion=new TextView(this);suggestion.setText("Photo analysis requires a Gemini key and internet. Offline pattern drafting does not.");suggestion.setTextIsSelectable(true);root.addView(suggestion);
         TextView offline=new TextView(this);offline.setText("OFFLINE PARAMETRIC DRAFTING (cm)");offline.setTextSize(19);offline.setPadding(0,18,0,6);root.addView(offline);
-        garment=new Spinner(this);String[] options={"Dress","Skirt","Top"};garment.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,options));root.addView(garment);
+        garment=new Spinner(this);String[] options={"Evening dress - fitted A-line","Evening dress - flared skirt","Evening dress - straight skirt"};garment.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,options));root.addView(garment);
+        method=new Spinner(this);String[] methods={"Metric block | balanced ease","Close-fit block | reduced ease","Relaxed block | extra ease","Aldrich / Muller | reference only"};method.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,methods));root.addView(method);
+        methodInfo=new TextView(this);root.addView(methodInfo);method.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){public void onNothingSelected(android.widget.AdapterView<?> parent){} public void onItemSelected(android.widget.AdapterView<?> parent,View v,int position,long id){updatePattern();}});
+        button(root,"Compare drafting methods",()->new AlertDialog.Builder(this).setTitle("Drafting methods / status").setMessage("METRIC: custom proportional block (bust +6, waist +2, hips +4 cm ease).\\nCLOSE FIT: reduced ease; test toile required.\\nRELAXED: more wearing ease.\\nALDRICH / MULLER: references only, NOT authentic implementations; choosing this shows the metric baseline.\\nNone are certified industrial methods. These are geometry variants, not guaranteed sewing-ready eveningwear patterns.").setPositiveButton("OK",null).show());
         bust=number(root,"Bust circumference (cm)","92");waist=number(root,"Waist circumference (cm)","72");hip=number(root,"Hip circumference (cm)","98");length=number(root,"Garment length (cm)","100");seam=number(root,"Seam allowance (cm)","1");
         button(root,"Generate measured block preview",this::updatePattern);
         pattern=new PatternView(this);root.addView(pattern,new LinearLayout.LayoutParams(-1,1150));
@@ -49,7 +53,7 @@ public class MainActivity extends Activity {
         TextView note=new TextView(this);note.setText("IMPORTANT: A4 PDF is drafted in true millimetres with size-based basic blocks and seam allowances. These are NOT validated custom-fitted patterns. Bodice depth, armholes, waist darts, fastenings and complex sleeves still require fitting/engineering. Print at 100%, check 50 mm line, assemble tiles and sew a test garment first. Gemini suggestions are not measurements.");root.addView(note);
     }
     float parse(EditText e,float fallback){try{return Float.parseFloat(e.getText().toString());}catch(Exception x){return fallback;}}
-    void updatePattern(){pattern.setParams(parse(bust,92),parse(waist,72),parse(hip,98),parse(length,100),parse(seam,1),garment.getSelectedItem().toString());}
+    void updatePattern(){pattern.setParams(parse(bust,92),parse(waist,72),parse(hip,98),parse(length,100),parse(seam,1),garment.getSelectedItem().toString());pattern.method=method.getSelectedItemPosition();methodInfo.setText(method.getSelectedItem().toString()+" — "+(pattern.method==3?"REFERENCE ONLY; metric baseline":"parametric block; test fitting required"));pdfName="SewPatternGemini-v0.2.0-"+(pattern.method==0?"Metric":pattern.method==1?"CloseFit":pattern.method==2?"Relaxed":"Reference")+".pdf";pattern.invalidate();}
     void pickPhoto(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("image/*");startActivityForResult(i,PICK_IMAGE);}
     @Override protected void onActivityResult(int req,int result,Intent data){super.onActivityResult(req,result,data);if(result!=RESULT_OK||data==null)return;
         if(req==PICK_IMAGE){imageUri=data.getData();photoLabel.setText("Photo selected: "+imageUri);try{getContentResolver().takePersistableUriPermission(imageUri,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}}
