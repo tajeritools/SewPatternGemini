@@ -43,17 +43,17 @@ public class MainActivity extends Activity {
         TextView offline=new TextView(this);offline.setText("OFFLINE PARAMETRIC DRAFTING (cm)");offline.setTextSize(19);offline.setPadding(0,18,0,6);root.addView(offline);
         garment=new Spinner(this);String[] options={"Dress","Skirt","Top"};garment.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,options));root.addView(garment);
         bust=number(root,"Bust circumference (cm)","92");waist=number(root,"Waist circumference (cm)","72");hip=number(root,"Hip circumference (cm)","98");length=number(root,"Garment length (cm)","100");seam=number(root,"Seam allowance (cm)","1");
-        button(root,"Generate offline schematic pattern",this::updatePattern);
+        button(root,"Generate measured block preview",this::updatePattern);
         pattern=new PatternView(this);root.addView(pattern,new LinearLayout.LayoutParams(-1,1150));
-        button(root,"Export diagram to PDF",()->{updatePattern(); Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/pdf");i.putExtra(Intent.EXTRA_TITLE,pdfName);startActivityForResult(i,CREATE_PDF);});
-        TextView note=new TextView(this);note.setText("IMPORTANT: This prototype produces approximate diagram pieces, not production-ready measured patterns. Validate dimensions, darts, construction and scale manually before cutting. Gemini suggestions are not measurements.");root.addView(note);
+        button(root,"Export tiled A4 pattern PDF (1:1)",()->{updatePattern(); Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/pdf");i.putExtra(Intent.EXTRA_TITLE,pdfName);startActivityForResult(i,CREATE_PDF);});
+        TextView note=new TextView(this);note.setText("IMPORTANT: A4 PDF is drafted in true millimetres with size-based basic blocks and seam allowances. These are NOT validated custom-fitted patterns. Bodice depth, armholes, waist darts, fastenings and complex sleeves still require fitting/engineering. Print at 100%, check 50 mm line, assemble tiles and sew a test garment first. Gemini suggestions are not measurements.");root.addView(note);
     }
     float parse(EditText e,float fallback){try{return Float.parseFloat(e.getText().toString());}catch(Exception x){return fallback;}}
     void updatePattern(){pattern.setParams(parse(bust,92),parse(waist,72),parse(hip,98),parse(length,100),parse(seam,1),garment.getSelectedItem().toString());}
     void pickPhoto(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("image/*");startActivityForResult(i,PICK_IMAGE);}
     @Override protected void onActivityResult(int req,int result,Intent data){super.onActivityResult(req,result,data);if(result!=RESULT_OK||data==null)return;
         if(req==PICK_IMAGE){imageUri=data.getData();photoLabel.setText("Photo selected: "+imageUri);try{getContentResolver().takePersistableUriPermission(imageUri,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}}
-        if(req==CREATE_PDF){try{PdfDocument doc=new PdfDocument(); PdfDocument.Page page=doc.startPage(new PdfDocument.PageInfo.Builder(595,842,1).create());Canvas c=page.getCanvas();c.save();c.scale(595f/760f,842f/1050f);pattern.drawSheet(c,760,1050);c.restore();doc.finishPage(page);try(OutputStream out=getContentResolver().openOutputStream(data.getData())){doc.writeTo(out);}doc.close();toast("PDF saved (schematic, not 1:1)");}catch(Exception ex){toast("Export failed: "+ex.getMessage());}}
+        if(req==CREATE_PDF){try{updatePattern();PdfDocument doc=pattern.makeTiledPdf();try(OutputStream out=getContentResolver().openOutputStream(data.getData())){doc.writeTo(out);}doc.close();toast("True-size tiled A4 PDF saved; print 100% and measure 50 mm reference.");}catch(Exception ex){toast("Export failed: "+ex.getMessage());}}
     }
     void toast(String t){runOnUiThread(()->Toast.makeText(this,t,Toast.LENGTH_LONG).show());}
     byte[] imageBytes() throws Exception{
