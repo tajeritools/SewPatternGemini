@@ -18,7 +18,7 @@ public class PatternView extends View {
   static final float TILE_W=190,TILE_H=277;
   static final float GRID=5;
   static class Piece {
-    String name,cut; float[] xy; boolean fold; float grainX, grainY1,grainY2;
+    String name,cut; float[] xy; boolean fold; float grainX, grainY1,grainY2; boolean bustDart=false;
     Piece(String n,String cut,boolean fold,float... coords){this.name=n;this.cut=cut;this.fold=fold;this.xy=coords;}
   }
   public PatternView(Context c){super(c);setBackgroundColor(Color.WHITE);}
@@ -50,7 +50,16 @@ public class PatternView extends View {
         0,0, neckWidth*10,0, neckWidth*10,75, shoulder,42, bw-10,armY, ww, bodiceH, 0,bodiceH);
       Piece b=new Piece("بالاتنه پشت","برش دو عدد قرینه",false,
         0,0,neckWidth*10,0,neckWidth*10,25,shoulder,38,bw-13,armY,ww,bodiceH,0,bodiceH);
-      out.add(f);out.add(b);
+      f.bustDart=true;out.add(f);out.add(b);
+      // Separate prototype pieces for the off-shoulder band and dress support.
+      float shoulderBand=Math.max(160,Math.min(360,(bust+6)*2.5f));
+      out.add(new Piece("آستین افتاده جلو - نمونه پرو","دو عدد قرینه",false, 0,0,shoulderBand,0,shoulderBand+30,100,25,130));
+      out.add(new Piece("آستین افتاده پشت - نمونه پرو","دو عدد قرینه",false, 0,0,shoulderBand,0,shoulderBand+18,90,15,105));
+      out.add(new Piece("بند سرشانه - نمونه پرو","دو عدد",false,0,0,35,0,35,280,0,280));
+      out.add(new Piece("سجاف جلو - نمونه پرو","یک عدد روی دولای بسته",true,0,0,neckWidth*10+30,0,neckWidth*10+60,70,0,95));
+      out.add(new Piece("سجاف پشت - نمونه پرو","دو عدد قرینه",false,0,0,neckWidth*10+35,0,neckWidth*10+50,60,0,85));
+      out.add(new Piece("آستر بالاتنه جلو - نمونه پرو","یک عدد روی دولای بسته",true,f.xy));
+      out.add(new Piece("آستر بالاتنه پشت - نمونه پرو","دو عدد قرینه",false,b.xy));
     }
     if(true){
       // A-line front/back skirt with fit-dependent width, moderate hem sweep
@@ -60,6 +69,8 @@ public class PatternView extends View {
       Piece b=new Piece("دامن پشت","برش دو عدد قرینه",false,
         0,0,ww,0,hw,200,hem,skirtH,0,skirtH);
       out.add(f);out.add(b);
+      out.add(new Piece("آستر دامن جلو - نمونه پرو","یک عدد روی دولای بسته",true,f.xy));
+      out.add(new Piece("آستر دامن پشت - نمونه پرو","دو عدد قرینه",false,b.xy));
     }
     return out;
   }
@@ -104,6 +115,16 @@ public class PatternView extends View {
     stitch.setPathEffect(new DashPathEffect(new float[]{3,2},0));c.drawPath(path(inner),stitch);
     float[] bb=bounds(inner);
     float mid=(bb[0]+bb[2])/2;
+    if(piece.bustDart){
+      float apexX=Math.max(35,Math.min(bb[2]-25,bustSpacing*5));
+      float apexY=Math.max(80,Math.min(bb[3]-70,bustHeight*10));
+      float waistY=bb[3], dartHalf=Math.max(6,Math.min(16,(bust-waist)*0.65f));
+      Paint dart=pen(0xff333333,.5f);dart.setStyle(Paint.Style.STROKE);
+      dart.setPathEffect(new DashPathEffect(new float[]{4,2},0));
+      c.drawLine(apexX,apexY,apexX-dartHalf,waistY,dart);
+      c.drawLine(apexX,apexY,apexX+dartHalf,waistY,dart);
+      c.drawLine(apexX-dartHalf,waistY,apexX+dartHalf,waistY,dart);
+    }
     Paint ink=pen(Color.BLACK,.4f);ink.setTextSize(6);ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
     float lineY=bb[1]+Math.min(95,(bb[3]-bb[1])*.48f);
     c.drawText(piece.name,bb[0]+10,lineY,ink);
