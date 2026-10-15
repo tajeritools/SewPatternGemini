@@ -9,7 +9,8 @@ import java.io.*;
 
 public class PatternView extends View {
   public float bust=92,waist=72,hip=98,length=100,allowance=1;
-  public String garment="Dress";
+  public String garment="Evening dress - fitted A-line";
+  public int method=0;
   static final float PT_PER_MM=72f/25.4f;
   static final float PAGE_W=210, PAGE_H=297, MARGIN=10;
   static final float TILE_W=190,TILE_H=277;
@@ -30,14 +31,17 @@ public class PatternView extends View {
        length<45||length>220||allowance<0||allowance>3)
        throw new IllegalArgumentException("Check dimensions: bust 60-180, waist 45-160, hip 60-190, length 45-220, seam 0-3 cm");
     ArrayList<Piece> out=new ArrayList<>();
-    float bw=(bust+6)*2.5f;  // quarter-bust in mm
-    float ww=(waist+2)*2.5f; // quarter-waist
-    float hw=(hip+4)*2.5f;
+    float bustEase=method==1?3:method==2?10:6;
+    float waistEase=method==1?1:method==2?6:2;
+    float hipEase=method==1?2:method==2?8:4;
+    float bw=(bust+bustEase)*2.5f;  // quarter-bust in mm
+    float ww=(waist+waistEase)*2.5f; // quarter-waist
+    float hw=(hip+hipEase)*2.5f;
     float bodiceH=400; // shoulder to waist nominal block
     float skirtH=Math.max(100,length*10-bodiceH);
     float shoulder=Math.min(bw-30,175);
     float armY=190;
-    if(!garment.equals("Skirt")){
+    if(true){
       // Coordinates outer contour WITHOUT seam allowance; dart intake represented by waist-shaping seam.
       Piece f=new Piece("FRONT BODICE","CUT 1 ON FOLD",true,
         0,0, 73,0, 73,75, shoulder,42, bw-10,armY, ww, bodiceH, 0,bodiceH);
@@ -45,9 +49,9 @@ public class PatternView extends View {
         0,0, 72,0,72,25,shoulder,38,bw-13,armY,ww,bodiceH,0,bodiceH);
       out.add(f);out.add(b);
     }
-    if(!garment.equals("Top")){
+    if(true){
       // A-line front/back skirt with fit-dependent width, moderate hem sweep
-      float hem=Math.max(hw+75,ww+120);
+      float hem=garment.contains("flared")? Math.max(hw+180,ww+260) : garment.contains("straight")? Math.max(hw,ww+30) : Math.max(hw+75,ww+120);
       Piece f=new Piece("FRONT SKIRT","CUT 1 ON FOLD",true,
         0,0,ww,0,hw,200,hem,skirtH,0,skirtH);
       Piece b=new Piece("BACK SKIRT","CUT 2 MIRRORED",false,
@@ -156,7 +160,7 @@ public class PatternView extends View {
     try{p=draft();}catch(Exception e){c.drawText(e.getMessage(),15,40,pen(Color.RED,1));return;}
     float x=15,y=20;
     Paint label=pen(Color.BLACK,1);label.setTextSize(13);
-    c.drawText("Measured draft preview (PDF is true 1:1)",x,y,label);
+    c.drawText("Eveningwear block | "+(method==0?"METRIC":method==1?"CLOSE FIT":method==2?"RELAXED":"REFERENCE"),x,y,label);
     for(Piece piece:p){
       float[] b=bounds(offset(piece.xy,allowance*10));
       float scale=Math.min((getWidth()-35)/(b[2]-b[0]),170/(b[3]-b[1]));
