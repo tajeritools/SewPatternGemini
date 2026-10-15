@@ -43,18 +43,18 @@ public class PatternView extends View {
     float armY=190;
     if(true){
       // Coordinates outer contour WITHOUT seam allowance; dart intake represented by waist-shaping seam.
-      Piece f=new Piece("FRONT BODICE","CUT 1 ON FOLD",true,
+      Piece f=new Piece("بالاتنه جلو","برش یک عدد روی دولای بسته",true,
         0,0, 73,0, 73,75, shoulder,42, bw-10,armY, ww, bodiceH, 0,bodiceH);
-      Piece b=new Piece("BACK BODICE","CUT 2 MIRRORED",false,
+      Piece b=new Piece("بالاتنه پشت","برش دو عدد قرینه",false,
         0,0, 72,0,72,25,shoulder,38,bw-13,armY,ww,bodiceH,0,bodiceH);
       out.add(f);out.add(b);
     }
     if(true){
       // A-line front/back skirt with fit-dependent width, moderate hem sweep
       float hem=garment.contains("flared")? Math.max(hw+180,ww+260) : garment.contains("straight")? Math.max(hw,ww+30) : Math.max(hw+75,ww+120);
-      Piece f=new Piece("FRONT SKIRT","CUT 1 ON FOLD",true,
+      Piece f=new Piece("دامن جلو","CUT 1 ON FOLD",true,
         0,0,ww,0,hw,200,hem,skirtH,0,skirtH);
-      Piece b=new Piece("BACK SKIRT","CUT 2 MIRRORED",false,
+      Piece b=new Piece("دامن پشت","CUT 2 MIRRORED",false,
         0,0,ww,0,hw,200,hem,skirtH,0,skirtH);
       out.add(f);out.add(b);
     }
@@ -106,7 +106,7 @@ public class PatternView extends View {
     c.drawText(piece.name,bb[0]+10,lineY,ink);
     ink.setTypeface(Typeface.DEFAULT);ink.setTextSize(5);
     c.drawText(piece.cut,bb[0]+10,lineY+9,ink);
-    c.drawText("SA "+(sa/10)+" cm",bb[0]+10,lineY+18,ink);
+    c.drawText("زاپاس "+(sa/10)+" سانتی متر",bb[0]+10,lineY+18,ink);
     float gx=bb[0]+Math.max(24,(bb[2]-bb[0])*.53f);
     float gy1=bb[1]+Math.min(50,(bb[3]-bb[1])*.18f),gy2=gy1+Math.min(65,(bb[3]-bb[1])*.22f);
     c.drawLine(gx,gy1,gx,gy2,outline);
@@ -122,7 +122,7 @@ public class PatternView extends View {
     if(piece.fold){
       Paint blue=pen(0xff185c88,.5f);blue.setStyle(Paint.Style.STROKE);
       c.drawLine(0,0,0,bb[3],blue);
-      ink.setTextSize(5);c.drawText("PLACE STRAIGHT EDGE ON FOLD",5,bb[3]-10,ink);
+      ink.setTextSize(5);c.drawText("لبه روی دولای بسته",5,bb[3]-10,ink);
     }
   }
   // One separate multi-page A4 print sheet per pattern piece. Page coordinates remain true mm.
@@ -145,7 +145,7 @@ public class PatternView extends View {
         canvas.drawText(piece.name+" | TILE "+(col+1)+"/"+cols+" x "+(row+1)+"/"+rows,12,6,txt);
         canvas.drawText("PRINT 100% / ACTUAL SIZE - NO FIT TO PAGE",12,294,txt);
         // 50mm scale verification line.
-        if(row==0&&col==0){canvas.drawLine(115,6,165,6,black);canvas.drawText("50 mm",170,7,txt);}
+        if(row==0&&col==0){canvas.drawLine(115,6,165,6,black);canvas.drawText("۵۰ میلی متر",170,7,txt);}
         canvas.clipRect(MARGIN,MARGIN,PAGE_W-MARGIN,PAGE_H-MARGIN);
         canvas.translate(MARGIN-col*TILE_W-minX,MARGIN-row*TILE_H-minY);
         drawPiece(canvas,piece,sa);
@@ -160,7 +160,7 @@ public class PatternView extends View {
     try{p=draft();}catch(Exception e){c.drawText(e.getMessage(),15,40,pen(Color.RED,1));return;}
     float x=15,y=20;
     Paint label=pen(Color.BLACK,1);label.setTextSize(13);
-    c.drawText("Eveningwear block | "+(method==0?"METRIC":method==1?"CLOSE FIT":method==2?"RELAXED":"REFERENCE"),x,y,label);
+    c.drawText( "الگوی مجلسی | "+(method==0?"متریک":method==1?"جذب":method==2?"آزاد":"مرجع"),x,y,label);
     for(Piece piece:p){
       float[] b=bounds(offset(piece.xy,allowance*10));
       float scale=Math.min((getWidth()-35)/(b[2]-b[0]),170/(b[3]-b[1]));
