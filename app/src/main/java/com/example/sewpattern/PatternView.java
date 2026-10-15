@@ -11,6 +11,7 @@ public class PatternView extends View {
   public float bust=92,waist=72,hip=98,length=100,allowance=1;
   public String garment="Evening dress - fitted A-line";
   public int method=0;
+  public int neckStyle=0,sleeveStyle=0;
   public float backWaist=40, shoulderLength=12.5f, armholeDepth=20, neckWidth=7.5f, bustHeight=27, bustSpacing=18;
   public void setExtra(float back,float shoulder,float armhole,float neck,float height,float spacing){backWaist=back;shoulderLength=shoulder;armholeDepth=armhole;neckWidth=neck;bustHeight=height;bustSpacing=spacing;invalidate();}
   static final float PT_PER_MM=72f/25.4f;
@@ -79,6 +80,8 @@ public class PatternView extends View {
   public String geometryReport(){
     ArrayList<Piece> pieces=draft();
     StringBuilder result=new StringBuilder("گزارش کنترل هندسی\\n");
+    int unsupported=(neckStyle!=0?1:0)+(sleeveStyle==2||sleeveStyle==3?1:0);
+    if(unsupported>0)result.append("هشدار: یقه/آستین انتخاب‌شده فاقد موتور تخصصی معتبر است.\\n");
     int errors=0;
     for(Piece part:pieces){
       float[] a=part.xy;
@@ -101,7 +104,7 @@ public class PatternView extends View {
     if(Math.abs(skirtJoin-quarter)>1)errors++;
     result.append("قطعات بررسی شده: ").append(pieces.size()).append("\\n");
     result.append("خطاهای هندسی پایه: ").append(errors).append("\\n");
-    result.append("کنترل نشده: تطبیق منحنی درزها، بسته شدن ساسون، اندازه کاپ، کشش پارچه، تناسب آستین، زیپ و پرو روی بدن.\\n");
+    result.append("آزمون‌های تخصصی موردنیاز: تطبیق منحنی درزها، بسته شدن ساسون، اندازه کاپ، کشش پارچه، تناسب آستین، زیپ و پرو روی بدن.\\n");
     result.append("نتیجه: ").append(errors==0?"هندسه اولیه قابل محاسبه است؛ تأیید برش صادر نمی‌شود.":"خروجی نیازمند اصلاح هندسی است.");
     return result.toString().replace("\\n","\n");
   }
