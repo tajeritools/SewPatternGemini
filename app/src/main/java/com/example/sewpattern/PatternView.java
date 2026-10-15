@@ -74,6 +74,37 @@ public class PatternView extends View {
     }
     return out;
   }
+
+  // Validation is explicit; a passed geometry check never implies fit certification.
+  public String geometryReport(){
+    ArrayList<Piece> pieces=draft();
+    StringBuilder result=new StringBuilder("گزارش کنترل هندسی\\n");
+    int errors=0;
+    for(Piece part:pieces){
+      float[] a=part.xy;
+      if(a.length<6||a.length%2!=0){errors++;result.append("خطا: قطعه ناقص: ").append(part.name).append("\\n");continue;}
+      float area=0;
+      for(int i=0;i<a.length;i+=2){
+        int j=(i+2)%a.length;
+        if(!Float.isFinite(a[i])||!Float.isFinite(a[i+1]))errors++;
+        area+=a[i]*a[j+1]-a[j]*a[i+1];
+      }
+      if(Math.abs(area)<1){errors++;result.append("خطا: مساحت نامعتبر: ").append(part.name).append("\\n");}
+      try {
+        float[] bb=bounds(offset(a,allowance*10));
+        for(float v:bb)if(!Float.isFinite(v))errors++;
+      }catch(Exception ex){errors++;result.append("خطا: زاپاس قطعه ").append(part.name).append("\\n");}
+    }
+    float ease=method==1?1:method==2?6:2;
+    float quarter=(waist+ease)*2.5f;
+    float skirtJoin=(float)Math.hypot(quarter,0);
+    if(Math.abs(skirtJoin-quarter)>1)errors++;
+    result.append("قطعات بررسی شده: ").append(pieces.size()).append("\\n");
+    result.append("خطاهای هندسی پایه: ").append(errors).append("\\n");
+    result.append("کنترل نشده: تطبیق منحنی درزها، بسته شدن ساسون، اندازه کاپ، کشش پارچه، تناسب آستین، زیپ و پرو روی بدن.\\n");
+    result.append("نتیجه: ").append(errors==0?"هندسه اولیه قابل محاسبه است؛ تأیید برش صادر نمی‌شود.":"خروجی نیازمند اصلاح هندسی است.");
+    return result.toString().replace("\\n","\n");
+  }
   static Paint pen(int color,float size){Paint p=new Paint(3);p.setColor(color);p.setStrokeWidth(size);return p;}
   static Path path(float[] xy){
     Path p=new Path();p.moveTo(xy[0],xy[1]);for(int i=2;i<xy.length;i+=2)p.lineTo(xy[i],xy[i+1]);p.close();return p;
