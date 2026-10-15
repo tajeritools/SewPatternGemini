@@ -11,6 +11,8 @@ public class PatternView extends View {
   public float bust=92,waist=72,hip=98,length=100,allowance=1;
   public String garment="Evening dress - fitted A-line";
   public int method=0;
+  public float backWaist=40, shoulderLength=12.5f, armholeDepth=20, neckWidth=7.5f, bustHeight=27, bustSpacing=18;
+  public void setExtra(float back,float shoulder,float armhole,float neck,float height,float spacing){backWaist=back;shoulderLength=shoulder;armholeDepth=armhole;neckWidth=neck;bustHeight=height;bustSpacing=spacing;invalidate();}
   static final float PT_PER_MM=72f/25.4f;
   static final float PAGE_W=210, PAGE_H=297, MARGIN=10;
   static final float TILE_W=190,TILE_H=277;
@@ -37,24 +39,25 @@ public class PatternView extends View {
     float bw=(bust+bustEase)*2.5f;  // quarter-bust in mm
     float ww=(waist+waistEase)*2.5f; // quarter-waist
     float hw=(hip+hipEase)*2.5f;
-    float bodiceH=400; // shoulder to waist nominal block
+    if(backWaist<25||backWaist>65||shoulderLength<8||shoulderLength>22||armholeDepth<12||armholeDepth>35||neckWidth<4||neckWidth>14||bustHeight<14||bustHeight>45||bustSpacing<10||bustSpacing>32) throw new IllegalArgumentException("اندازه‌های تکمیلی را بررسی کنید");
+    float bodiceH=backWaist*10;
     float skirtH=Math.max(100,length*10-bodiceH);
-    float shoulder=Math.min(bw-30,175);
-    float armY=190;
+    float shoulder=Math.min(bw-30,neckWidth*10+shoulderLength*10);
+    float armY=armholeDepth*10;
     if(true){
       // Coordinates outer contour WITHOUT seam allowance; dart intake represented by waist-shaping seam.
       Piece f=new Piece("بالاتنه جلو","برش یک عدد روی دولای بسته",true,
-        0,0, 73,0, 73,75, shoulder,42, bw-10,armY, ww, bodiceH, 0,bodiceH);
+        0,0, neckWidth*10,0, neckWidth*10,75, shoulder,42, bw-10,armY, ww, bodiceH, 0,bodiceH);
       Piece b=new Piece("بالاتنه پشت","برش دو عدد قرینه",false,
-        0,0, 72,0,72,25,shoulder,38,bw-13,armY,ww,bodiceH,0,bodiceH);
+        0,0,neckWidth*10,0,neckWidth*10,25,shoulder,38,bw-13,armY,ww,bodiceH,0,bodiceH);
       out.add(f);out.add(b);
     }
     if(true){
       // A-line front/back skirt with fit-dependent width, moderate hem sweep
       float hem=garment.contains("flared")? Math.max(hw+180,ww+260) : garment.contains("straight")? Math.max(hw,ww+30) : Math.max(hw+75,ww+120);
-      Piece f=new Piece("دامن جلو","CUT 1 ON FOLD",true,
+      Piece f=new Piece("دامن جلو","برش یک عدد روی دولای بسته",true,
         0,0,ww,0,hw,200,hem,skirtH,0,skirtH);
-      Piece b=new Piece("دامن پشت","CUT 2 MIRRORED",false,
+      Piece b=new Piece("دامن پشت","برش دو عدد قرینه",false,
         0,0,ww,0,hw,200,hem,skirtH,0,skirtH);
       out.add(f);out.add(b);
     }
@@ -142,7 +145,7 @@ public class PatternView extends View {
         Paint black=pen(Color.BLACK,.3f);black.setStyle(Paint.Style.STROKE);
         canvas.drawRect(MARGIN,MARGIN,PAGE_W-MARGIN,PAGE_H-MARGIN,black);
         Paint txt=pen(Color.BLACK,0);txt.setTextSize(4.5f);
-        canvas.drawText(piece.name+" | TILE "+(col+1)+"/"+cols+" x "+(row+1)+"/"+rows,12,6,txt);
+        canvas.drawText(piece.name+" | صفحه "+(col+1)+"/"+cols+" - "+(row+1)+"/"+rows,12,6,txt);
         canvas.drawText("PRINT 100% / ACTUAL SIZE - NO FIT TO PAGE",12,294,txt);
         // 50mm scale verification line.
         if(row==0&&col==0){canvas.drawLine(115,6,165,6,black);canvas.drawText("۵۰ میلی متر",170,7,txt);}
