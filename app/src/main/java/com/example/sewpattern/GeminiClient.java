@@ -38,7 +38,7 @@ public final class GeminiClient {
       JSONObject list=request(url,key,null);
       JSONArray models=list.optJSONArray("models");if(models==null)break;
       for(int i=0;i<models.length();i++){
-        JSONObject m=models.getJSONObject(i),methods=m.optJSONArray("supportedGenerationMethods");
+        JSONObject m=models.getJSONObject(i);JSONArray methods=m.optJSONArray("supportedGenerationMethods");
         if(methods==null)continue;
         boolean can=false;for(int j=0;j<methods.length();j++)if("generateContent".equals(methods.optString(j)))can=true;
         String n=m.optString("name");
