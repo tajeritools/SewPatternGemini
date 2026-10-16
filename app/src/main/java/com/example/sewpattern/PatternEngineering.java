@@ -71,6 +71,11 @@ public final class PatternEngineering {
             report.append(String.format(Locale.US,"اختلاف پهلوی دامن: %.1f میلی‌متر\n",mismatch));
             if(mismatch>5)warnings++;
         }
+        report.append("کنترل خط دوخت جفت‌درزهای تعریف‌شده:\n");
+        for(SeamGraph.Result seam:SeamGraph.validate(list)){
+            report.append(String.format(Locale.US,"%s | %.1f / %.1f | اختلاف %.1f | مجاز %.1f میلی‌متر | %s\n",seam.name,seam.firstMm,seam.secondMm,seam.differenceMm,seam.toleranceMm,seam.valid?"قبول":"رد"));
+            if(!seam.valid)errors++;
+        }
         if(view.neckStyle!=0||view.sleeveStyle>=2){warnings++;report.append("هشدار: مدل یقه یا آستین انتخابی هنوز قالب تخصصی تأییدشده ندارد.\n");}
         warnings++;
         report.append("هشدار: تاج آستین/حلقه، تبدیل صحیح ساسون به کاپ یا برش پرنسسی، تطبیق همه درزهای آستر و سجاف، چرت‌ها و کشش پارچه آزمون و تأیید نشده‌اند.\n");
