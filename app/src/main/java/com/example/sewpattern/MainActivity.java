@@ -103,7 +103,7 @@ public class MainActivity extends Activity {
     }
     void showFitStatus(){
         boolean current=getPreferences(0).getString("fit_fingerprint","").equals(fingerprint());
-        String state=current?"پرو برای این ترکیب ثبت شده است؛ تأیید توسط کاربر، نه گواهی نرم‌افزار.":"تأیید برش ندارید؛ پس از تغییر اندازه‌ها یا مدل، پرو قبلی نامعتبر است.";
+        String state=current?"ثبت پرو کاربر برای همین نسخه الگو معتبر است. این ثبت، تأیید فنی خودکار یا تضمین برش نیست.\\nیادداشت: "+getPreferences(0).getString("fit_notes","")+"\\nعکس پرو: "+(getPreferences(0).getString("fit_photo","").isEmpty()?"ثبت نشده":"ثبت شده"):"تأیید برش ثبت نشده یا به دلیل تغییر اندازه‌ها، مدل یا عکس نامعتبر شده است. این نسخه الگو برای برش مستقیم پارچه اصلی تأیید فنی ندارد.";
         fittingStatus.setText(state);
         new AlertDialog.Builder(this).setTitle("وضعیت پرونده پرو").setMessage(state).setPositiveButton("بستن",null).show();
     }
