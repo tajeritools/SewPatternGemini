@@ -21,10 +21,14 @@ public class MainActivity extends Activity {
     Spinner garment, neckline, sleeves;
     Uri imageUri;
     JSONObject detectedDesign;
-    String pdfName="SewPatternGemini-v0.9.0-Metric.pdf";
+    String pdfName="SewPatternGemini-v1.0.0-Metric.pdf";
     boolean measurementsConfirmed=false;
     Spinner method; TextView methodInfo;
-    final int PICK_IMAGE=10, CREATE_PDF=11, CREATE_ZIP=12;
+    final int PICK_IMAGE=10, CREATE_PDF=11, CREATE_ZIP=12, PICK_FIT_PHOTO=13;
+    Uri fittingPhotoUri;
+    EditText fittingNotes;
+    TextView fittingStatus;
+    CheckBox fittingChecked, scaleChecked, seamsChecked;
     int bg=0xfff3f7fb;
     @Override public void onCreate(Bundle b){super.onCreate(b);getWindow().getDecorView().setLayoutDirection(View.LAYOUT_DIRECTION_RTL);buildUI();}
     EditText number(LinearLayout parent,String title,String value){
@@ -35,7 +39,7 @@ public class MainActivity extends Activity {
     void buildUI(){
         ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);setContentView(scroll);
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(20,18,20,30);root.setBackgroundColor(bg);scroll.addView(root);
-        TextView header=new TextView(this);header.setText("SewPatternGemini  نسخه ۰.۹.۰ | لباس مجلسی");header.setTextSize(24);header.setTextColor(0xff18364f);root.addView(header);
+        TextView header=new TextView(this);header.setText("SewPatternGemini  نسخه ۱.۰.۰ | لباس مجلسی");header.setTextSize(24);header.setTextColor(0xff18364f);root.addView(header);
         status=new TextView(this);status.setText("جمنای: بررسی نشده | حالت آفلاین: آماده");status.setPadding(0,10,0,10);root.addView(status);
         button(root,"انتخاب عکس لباس مجلسی",this::pickPhoto);
         photoLabel=new TextView(this);photoLabel.setText("هنوز عکسی انتخاب نشده");root.addView(photoLabel);
@@ -60,22 +64,59 @@ public class MainActivity extends Activity {
         backWaist=number(root,"بلندی پشت تا کمر","40");shoulderLength=number(root,"طول سرشانه","12.5");armholeDepth=number(root,"عمق حلقه آستین","20");neckWidth=number(root,"عرض یقه","7.5");bustHeight=number(root,"بلندی سینه","27");bustSpacing=number(root,"فاصله دو سینه","18");
         units.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){int previous=0;public void onNothingSelected(android.widget.AdapterView<?> p){} public void onItemSelected(android.widget.AdapterView<?> p,View v,int position,long id){if(position==previous)return;float factor=position==1?10f:.1f;for(EditText e:new EditText[]{bust,waist,hip,length,seam,backWaist,shoulderLength,armholeDepth,neckWidth,bustHeight,bustSpacing}){try{e.setText(String.format(java.util.Locale.US,"%.2f",Float.parseFloat(e.getText().toString())*factor));}catch(Exception ignored){}}previous=position;}});
         button(root,"بررسی اندازه‌ها و فعال‌سازی خروجی چاپ",()->{try{requireReady();measurementsConfirmed=true;toast("اندازه‌ها بررسی شد. خروجی الگوی پایه برای پرو فعال است.");}catch(Exception ex){toast(ex.getMessage());}});
+        TextView fittingHeader=new TextView(this);fittingHeader.setText("پرونده پرو و ثبت تأیید برش");fittingHeader.setTextSize(20);root.addView(fittingHeader);
+        fittingStatus=new TextView(this);root.addView(fittingStatus);
+        fittingNotes=new EditText(this);fittingNotes.setHint("اصلاحات پرو، تاریخ، جنس پارچه و نام تأییدکننده را وارد کنید");fittingNotes.setMinLines(3);root.addView(fittingNotes);
+        fittingChecked=new CheckBox(this);fittingChecked.setText("نمونه پارچه‌ای روی بدن پرو شده و اصلاحات در الگو اعمال شده است");root.addView(fittingChecked);
+        scaleChecked=new CheckBox(this);scaleChecked.setText("خط کنترل ۵۰ میلی‌متری در چاپ ۱۰۰٪ اندازه‌گیری شده است");root.addView(scaleChecked);
+        seamsChecked=new CheckBox(this);seamsChecked.setText("درزهای متصل، جهت پارچه، زاپاس و قطعات آستر دستی بررسی شده‌اند");root.addView(seamsChecked);
+        button(root,"انتخاب عکس نمونه پرو (اختیاری)",()->{Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("image/*");startActivityForResult(i,PICK_FIT_PHOTO);});
+        button(root,"ثبت تأیید پرو برای همین نسخه الگو",this::approveFitting);
+        button(root,"نمایش وضعیت پرونده پرو",this::showFitStatus);
+        button(root,"لغو تأیید پرو",()->{getPreferences(0).edit().remove("fit_fingerprint").remove("fit_notes").remove("fit_photo").apply();showFitStatus();});
         button(root,"آزمون درزها، تقاطع قطعات و بررسی آماده‌سازی",()->{try{updatePattern();new AlertDialog.Builder(this).setTitle("گزارش کنترل هندسی").setMessage(PatternEngineering.audit(pattern)).setPositiveButton("بستن",null).show();}catch(Exception ex){toast(ex.getMessage());}});
         button(root,"نمایش الگوی اندازه‌گذاری‌شده",()->{try{requireReady();pattern.draft();toast("پیش‌نمایش به‌روز شد");}catch(Exception ex){toast(ex.getMessage());}});
         pattern=new PatternView(this);root.addView(pattern,new LinearLayout.LayoutParams(-1,1150));
-        button(root,"خروجی هر سه روش در ZIP (PDF A4)",()->{try{requireReady();pattern.draft();}catch(Exception ex){toast(ex.getMessage());return;} Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/zip");i.putExtra(Intent.EXTRA_TITLE,"SewPatternGemini-v0.9.0-patterns.zip");startActivityForResult(i,CREATE_ZIP);});
+        button(root,"خروجی هر سه روش در ZIP (PDF A4)",()->{try{requireReady();pattern.draft();}catch(Exception ex){toast(ex.getMessage());return;} Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/zip");i.putExtra(Intent.EXTRA_TITLE,"SewPatternGemini-v1.0.0-patterns.zip");startActivityForResult(i,CREATE_ZIP);});
         button(root,"خروجی PDF الگو در مقیاس ۱:۱",()->{try{requireReady();pattern.draft();}catch(Exception ex){toast(ex.getMessage());return;} Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/pdf");i.putExtra(Intent.EXTRA_TITLE,pdfName);startActivityForResult(i,CREATE_PDF);});
         TextView note=new TextView(this);note.setText("توجه: مسیر پیش‌نمایش عکس و مسیر الگوی اندازه‌گذاری‌شده جدا هستند. برای PDF واردکردن تمام اندازه‌های واقعی اجباری است. موتور الگوسازی و ارزیابی درزها هنوز در حال توسعه‌اند. این نسخه هنوز مجوز برش مستقیم هر لباس مجلسی نیست؛ قطعات آستین افتاده، بند، سجاف و آستر به‌عنوان قطعات آزمایشی اضافه شدند؛ بلندی و فاصله سینه در راهنمای ساسون اعمال می‌شوند. این قطعات هنوز از نظر طول اتصال، کاپ و تن‌خور تأیید نشده‌اند و برای برش مستقیم پارچه اصلی مناسب نیستند. نخست روی پارچه ارزان نمونه پرو بدوزید.");root.addView(note);
+    }
+    String fingerprint(){
+        StringBuilder b=new StringBuilder("v1|"+garment.getSelectedItemPosition()+"|"+neckline.getSelectedItemPosition()+"|"+sleeves.getSelectedItemPosition()+"|"+method.getSelectedItemPosition()+"|");
+        for(EditText e:new EditText[]{bust,waist,hip,length,seam,backWaist,shoulderLength,armholeDepth,neckWidth,bustHeight,bustSpacing})b.append(e.getText().toString().trim()).append("|");
+        b.append(units.getSelectedItemPosition()).append("|");
+        b.append(detectedDesign==null?"":detectedDesign.toString()).append("|");
+        b.append(imageUri==null?"":imageUri.toString());
+        return b.toString();
+    }
+    void approveFitting(){
+        try{
+            requireReady();
+            if(!fittingChecked.isChecked()||!scaleChecked.isChecked()||!seamsChecked.isChecked())throw new IllegalArgumentException("هر سه مرحله پرو، کنترل چاپ و بررسی درزها باید تأیید شوند.");
+            if(fittingNotes.getText().toString().trim().length()<15)throw new IllegalArgumentException("شرح واقعی پرو و اصلاحات را با جزئیات بنویسید.");
+            String report=PatternEngineering.audit(pattern);
+            if(report.contains("خطا: "))throw new IllegalArgumentException("در گزارش هندسی خطا وجود دارد.");
+            getPreferences(0).edit().putString("fit_fingerprint",fingerprint()).putString("fit_notes",fittingNotes.getText().toString())
+                .putString("fit_photo",fittingPhotoUri==null?"":fittingPhotoUri.toString()).apply();
+            showFitStatus();
+        }catch(Exception e){toast("ثبت تأیید انجام نشد: "+e.getMessage());}
+    }
+    void showFitStatus(){
+        boolean current=getPreferences(0).getString("fit_fingerprint","").equals(fingerprint());
+        String state=current?"پرو برای این ترکیب ثبت شده است؛ تأیید توسط کاربر، نه گواهی نرم‌افزار.":"تأیید برش ندارید؛ پس از تغییر اندازه‌ها یا مدل، پرو قبلی نامعتبر است.";
+        fittingStatus.setText(state);
+        new AlertDialog.Builder(this).setTitle("وضعیت پرونده پرو").setMessage(state).setPositiveButton("بستن",null).show();
     }
     void photoPreview(){if(imageUri==null){toast("ابتدا عکس لباس مجلسی انتخاب کنید");return;}String info=detectedDesign==null?"عکس انتخاب شده است. برای تشخیص نوع یقه، آستین و دامن، تحلیل جمنای را اجرا کنید.":"ویژگی‌های تشخیص‌داده‌شده: "+detectedDesign.toString();new AlertDialog.Builder(this).setTitle("پیش‌نمایش توصیفی مدل؛ بدون الگوی برش").setMessage(info+"\nاین مسیر نیاز به اندازه‌های بدن ندارد و فایل قابل برش تولید نمی‌کند.").setPositiveButton("بستن",null).show();}
     void requireReady(){if(bust==null||bust.getText().length()==0)throw new IllegalArgumentException("اندازه‌های بدن را ابتدا وارد کنید؛ فیلدهای پیش‌فرض حذف شده‌اند.");if(garment.getSelectedItemPosition()>2||neckline.getSelectedItemPosition()!=0||sleeves.getSelectedItemPosition()!=0||method.getSelectedItemPosition()==3)throw new IllegalArgumentException("موتور این مدل، یقه، آستین یا روش الگوسازی هنوز معتبر نیست؛ PDF این ترکیب صادر نمی‌شود.");updatePattern();pattern.draft();String report=PatternEngineering.audit(pattern);if(report.contains("خطا: "))throw new IllegalArgumentException("در کنترل هندسی خطا وجود دارد؛ ابتدا گزارش آزمون درزها را بررسی کنید."); }
     float parse(EditText e,float fallback){try{String value=e.getText().toString().trim().replace("٫",".");if(value.isEmpty())throw new IllegalArgumentException("اندازه خالی است");float n=Float.parseFloat(value);if(!Float.isFinite(n)||n<=0)throw new IllegalArgumentException("اندازه نامعتبر است");return n/(units.getSelectedItemPosition()==1?10f:1f);}catch(Exception x){throw new IllegalArgumentException("مقدار نامعتبر در فیلد: "+e.getHint());}}
-    void updatePattern(){if(pattern==null||method==null||method.getSelectedItem()==null)return;pattern.setParams(parse(bust,92),parse(waist,72),parse(hip,98),parse(length,100),parse(seam,1),(garment.getSelectedItemPosition()==1?"Evening dress - flared skirt":garment.getSelectedItemPosition()==2?"Evening dress - straight skirt":"Evening dress - fitted A-line"));if(garment.getSelectedItemPosition()>2)throw new IllegalArgumentException("برای این مدل، موتور الگوسازی تخصصی هنوز پیاده‌سازی نشده است؛ الگوی عمومی را به جای آن چاپ نکنید.");pattern.setExtra(parse(backWaist,40),parse(shoulderLength,12.5f),parse(armholeDepth,20),parse(neckWidth,7.5f),parse(bustHeight,27),parse(bustSpacing,18));pattern.method=method.getSelectedItemPosition();pattern.neckStyle=neckline.getSelectedItemPosition();pattern.sleeveStyle=sleeves.getSelectedItemPosition();methodInfo.setText(method.getSelectedItem().toString()+" — "+(pattern.method==3?"فقط مرجع؛ خروجی همان الگوی متریک است":"بلوک محاسباتی؛ پرو ضروری است"));pdfName="SewPatternGemini-v0.9.0-"+(pattern.method==0?"Metric":pattern.method==1?"CloseFit":pattern.method==2?"Relaxed":"Reference")+".pdf";pattern.invalidate();}
+    void updatePattern(){if(pattern==null||method==null||method.getSelectedItem()==null)return;pattern.setParams(parse(bust,92),parse(waist,72),parse(hip,98),parse(length,100),parse(seam,1),(garment.getSelectedItemPosition()==1?"Evening dress - flared skirt":garment.getSelectedItemPosition()==2?"Evening dress - straight skirt":"Evening dress - fitted A-line"));if(garment.getSelectedItemPosition()>2)throw new IllegalArgumentException("برای این مدل، موتور الگوسازی تخصصی هنوز پیاده‌سازی نشده است؛ الگوی عمومی را به جای آن چاپ نکنید.");pattern.setExtra(parse(backWaist,40),parse(shoulderLength,12.5f),parse(armholeDepth,20),parse(neckWidth,7.5f),parse(bustHeight,27),parse(bustSpacing,18));pattern.method=method.getSelectedItemPosition();pattern.neckStyle=neckline.getSelectedItemPosition();pattern.sleeveStyle=sleeves.getSelectedItemPosition();methodInfo.setText(method.getSelectedItem().toString()+" — "+(pattern.method==3?"فقط مرجع؛ خروجی همان الگوی متریک است":"بلوک محاسباتی؛ پرو ضروری است"));pdfName="SewPatternGemini-v1.0.0-"+(pattern.method==0?"Metric":pattern.method==1?"CloseFit":pattern.method==2?"Relaxed":"Reference")+".pdf";pattern.invalidate();}
     void applyDetectedDesign(){if(detectedDesign==null){toast("ابتدا عکس را با جمنای تحلیل کنید");return;}String s=detectedDesign.optString("skirt","unknown"),n=detectedDesign.optString("neckline","unknown"),sl=detectedDesign.optString("sleeve","unknown");if(s.equals("aline"))garment.setSelection(0);else if(s.equals("flared"))garment.setSelection(1);else if(s.equals("straight"))garment.setSelection(2);else if(s.equals("mermaid"))garment.setSelection(4);if(n.equals("regular"))neckline.setSelection(0);else if(n.equals("strapless"))neckline.setSelection(1);else if(n.equals("vneck"))neckline.setSelection(2);else if(n.equals("boat"))neckline.setSelection(3);if(sl.equals("none"))sleeves.setSelection(0);else if(sl.equals("offshoulder"))sleeves.setSelection(1);else if(sl.equals("setin"))sleeves.setSelection(2);else if(sl.equals("long"))sleeves.setSelection(3);toast("جزئیات قابل‌تشخیص اعمال شد؛ قبل از چاپ بررسی کنید");}
     void pickPhoto(){Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("image/*");startActivityForResult(i,PICK_IMAGE);}
     @Override protected void onActivityResult(int req,int result,Intent data){super.onActivityResult(req,result,data);if(result!=RESULT_OK||data==null)return;
+        if(req==PICK_FIT_PHOTO){fittingPhotoUri=data.getData();toast("عکس نمونه پرو انتخاب شد");try{getContentResolver().takePersistableUriPermission(fittingPhotoUri,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}}
         if(req==PICK_IMAGE){imageUri=data.getData();photoLabel.setText("عکس انتخاب‌شده: "+imageUri);try{getContentResolver().takePersistableUriPermission(imageUri,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}}
-        if(req==CREATE_ZIP){try{requireReady();int original=pattern.method;String[] names={"Metric","CloseFit","Relaxed"};try(java.util.zip.ZipOutputStream zip=new java.util.zip.ZipOutputStream(getContentResolver().openOutputStream(data.getData()))){for(int k=0;k<3;k++){pattern.method=k;PdfDocument doc=pattern.makeTiledPdf();ByteArrayOutputStream output=new ByteArrayOutputStream();doc.writeTo(output);doc.close();zip.putNextEntry(new java.util.zip.ZipEntry("SewPatternGemini-v0.9.0-"+names[k]+".pdf"));zip.write(output.toByteArray());zip.closeEntry();}String instructions="سه روش بلوک محاسباتی سفارشی هستند و نسخه رسمی آلدریچ یا مولر نیستند. در مقیاس ۱۰۰٪ چاپ کنید، خط کنترل ۵۰ میلی‌متری را اندازه بگیرید و قبل از برش پارچه اصلی نمونه پرو بدوزید. قطعات آستین افتاده، آستر و سجاف اولیه و نیازمند اصلاح پرو هستند. زیپ و ساخت کامل کاپ هنوز نهایی نشده‌اند.\\n";zip.putNextEntry(new java.util.zip.ZipEntry("READ_BEFORE_SEWING.txt"));zip.write(instructions.getBytes(java.nio.charset.StandardCharsets.UTF_8));zip.closeEntry();}pattern.method=original;pattern.invalidate();toast("سه فایل PDF ذخیره شدند؛ پیش از برش پارچه اصلی، نمونه پرو بدوزید.");}catch(Exception ex){toast("خطای ZIP: "+ex.getMessage());}}
+        if(req==CREATE_ZIP){try{requireReady();int original=pattern.method;String[] names={"Metric","CloseFit","Relaxed"};try(java.util.zip.ZipOutputStream zip=new java.util.zip.ZipOutputStream(getContentResolver().openOutputStream(data.getData()))){for(int k=0;k<3;k++){pattern.method=k;PdfDocument doc=pattern.makeTiledPdf();ByteArrayOutputStream output=new ByteArrayOutputStream();doc.writeTo(output);doc.close();zip.putNextEntry(new java.util.zip.ZipEntry("SewPatternGemini-v1.0.0-"+names[k]+".pdf"));zip.write(output.toByteArray());zip.closeEntry();}String instructions="سه روش بلوک محاسباتی سفارشی هستند و نسخه رسمی آلدریچ یا مولر نیستند. در مقیاس ۱۰۰٪ چاپ کنید، خط کنترل ۵۰ میلی‌متری را اندازه بگیرید و قبل از برش پارچه اصلی نمونه پرو بدوزید. قطعات آستین افتاده، آستر و سجاف اولیه و نیازمند اصلاح پرو هستند. زیپ و ساخت کامل کاپ هنوز نهایی نشده‌اند.\\n";zip.putNextEntry(new java.util.zip.ZipEntry("READ_BEFORE_SEWING.txt"));zip.write(instructions.getBytes(java.nio.charset.StandardCharsets.UTF_8));zip.closeEntry();}pattern.method=original;pattern.invalidate();toast("سه فایل PDF ذخیره شدند؛ پیش از برش پارچه اصلی، نمونه پرو بدوزید.");}catch(Exception ex){toast("خطای ZIP: "+ex.getMessage());}}
         if(req==CREATE_PDF){try{requireReady();PdfDocument doc=pattern.makeTiledPdf();try(OutputStream out=getContentResolver().openOutputStream(data.getData())){doc.writeTo(out);}doc.close();toast("PDF ذخیره شد؛ در اندازه واقعی چاپ کنید و خط ۵۰ میلی‌متری را اندازه بگیرید.");}catch(Exception ex){toast("خطای خروجی: "+ex.getMessage());}}
     }
     void toast(String t){runOnUiThread(()->Toast.makeText(this,t,Toast.LENGTH_LONG).show());}
